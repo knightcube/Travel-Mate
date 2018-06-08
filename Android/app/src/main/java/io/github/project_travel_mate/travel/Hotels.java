@@ -235,7 +235,7 @@ public class Hotels extends AppCompatActivity implements DatePickerDialog.OnDate
         final JSONArray feedItems;
         private final LayoutInflater inflater;
 
-        HotelsAdapter(Context context, JSONArray feedItems) {
+            HotelsAdapter(Context context, JSONArray feedItems) {
             this.context = context;
             this.feedItems = feedItems;
 
