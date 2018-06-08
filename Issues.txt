@@ -1,0 +1,12 @@
+1. Separate HotelAdapter class from Hotels class (inside travel package) - Implementing MVP would be wise
+2. In HotelAdapter use ViewHolder to contain all the findViewByIds - much more efficient choice
+3. The Locate,Call, and Book buttons dont work like buttons. Improve the tapping. Need to click on the text specifically to do an action. Image clicking gives no response. Smoothen the UX of it.
+4. Shopping Screen not loading items. Progress bar being shown for an infinite time
+5. Give the use an option to delete all completed tasks in one go
+6. Fix the top white bar above the toolbar
+7. Make a search button in toolbar instead of the EditText below the toolbar in MainActivity
+8. Improve the overall look and feel of the MainActivity screen
+9. Improve the trending hashtags in City Trends i.e Tweets.java.
+10.On clicking the hash tags give a rich preview of the url like whatsapp before opening it on the browser or the twitter app
+11.Restaurants,Monuments, and Shopping should show the location of the respective things in the map. Right now it just opens the map
+12. Use Room architecture component in order to store data in SQLite database instead of contract classes.
