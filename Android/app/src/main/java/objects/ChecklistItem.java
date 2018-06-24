@@ -5,26 +5,32 @@ package objects;
  */
 public class ChecklistItem {
 
-    private final String id;
-    private final String name;
-    private final String isDone;
+    private final String mId;
+    private final String mName;
+    private final String mIsDone;
 
-
+    // TODO :: Make isDone bool
+    /**
+     * Initiates checklist item
+     * @param id        unique id of item
+     * @param name      checklist task name
+     * @param isDone    specify if the item is checked
+     */
     public ChecklistItem(String id, String name, String isDone) {
-        this.id = id;
-        this.isDone = isDone;
-        this.name = name;
+        this.mId = id;
+        this.mIsDone = isDone;
+        this.mName = name;
     }
 
     public String getId() {
-        return id;
+        return mId;
     }
 
     public String getName() {
-        return name;
+        return mName;
     }
 
     public String getIsDone() {
-        return isDone;
+        return mIsDone;
     }
 }

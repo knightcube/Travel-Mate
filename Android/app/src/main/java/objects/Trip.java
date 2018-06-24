@@ -1,49 +1,63 @@
 package objects;
 
-public class Trip {
+import java.io.Serializable;
 
-    private String id;
-    private String name;
-    private String image;
-    private String start;
-    private String end;
-    private String tname;
+public class Trip implements Serializable {
 
-    public Trip() {
+    private String mId;
+    private String mName;
+    private String mImage;
+    private String mStart;
+    private String mEnd;
+    private String mTname;
 
+    public Trip() { }
+
+    /**
+     * Initiates trip object
+     * @param id        trip id
+     * @param name      name of the city
+     * @param image     trip icon
+     * @param start     start date of trip
+     * @param end       end date of trip
+     * @param tname     name of trip
+     */
+    public Trip(String id, String name, String image, String start, String end, String tname) {
+        this.mId = id;
+        this.mName = name;
+        this.mImage = image;
+        this.mStart = start;
+        this.mEnd = end;
+        this.mTname = tname;
     }
 
-    public Trip(String id, String name, String image, String start, String end, String tname) {
-        this.id = id;
-        this.name = name;
-        this.image = image;
-        this.start = start;
-        this.end = end;
-        this.tname = tname;
+    public Trip(String mId, String mImage) {
+        this.mId = mId;
+        this.mImage = mImage;
     }
 
     public String getId() {
-        return id;
+        return mId;
     }
 
     public String getName() {
-        return name;
+        return mName;
     }
 
     public String getImage() {
-        return image;
+        return mImage;
     }
 
     public String getStart() {
-        return start;
+        return mStart;
     }
 
     public String getEnd() {
-        return end;
+        return mEnd;
     }
 
     public String getTname() {
-        return tname;
+        return mTname;
     }
 
 

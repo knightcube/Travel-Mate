@@ -1,9 +1,11 @@
 package io.github.project_travel_mate.destinations.funfacts;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
@@ -24,9 +26,11 @@ import java.util.Objects;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import io.github.project_travel_mate.R;
+import objects.City;
+import objects.FunFact;
 
-import static utils.Constants.EXTRA_MESSAGE_ID;
-import static utils.Constants.EXTRA_MESSAGE_NAME;
+import static utils.Constants.EXTRA_MESSAGE_CITY_OBJECT;
+import static utils.Constants.USER_TOKEN;
 
 /**
  * Funfacts activity
@@ -36,9 +40,9 @@ public class FunFacts extends AppCompatActivity implements FunFactsView {
     @BindView(R.id.vp)
     ViewPager viewPager;
 
-    private String id;
-    private String name;
-    private MaterialDialog dialog;
+    private City mCity;
+    private String mToken;
+    private MaterialDialog mDialog;
     private Handler mHandler;
 
     @Override
@@ -51,10 +55,12 @@ public class FunFacts extends AppCompatActivity implements FunFactsView {
 
         ButterKnife.bind(this);
 
-        Intent intent       = getIntent();
-        id                  = intent.getStringExtra(EXTRA_MESSAGE_ID);
-        name                = intent.getStringExtra(EXTRA_MESSAGE_NAME);
-        mHandler            = new Handler(Looper.getMainLooper());
+        Intent intent = getIntent();
+        mCity = (City) intent.getSerializableExtra(EXTRA_MESSAGE_CITY_OBJECT);
+        mHandler  = new Handler(Looper.getMainLooper());
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        mToken = sharedPreferences.getString(USER_TOKEN, null);
 
         initPresenter();
         Objects.requireNonNull(getSupportActionBar()).hide();
@@ -62,21 +68,21 @@ public class FunFacts extends AppCompatActivity implements FunFactsView {
 
     private void initPresenter() {
         FunFactsPresenter mPresenter = new FunFactsPresenter(this);
-        mPresenter.initPresenter(id);
+        mPresenter.initPresenter(mCity.getId(), mToken);
     }
 
     @Override
     public void showProgressDialog() {
-        dialog = new MaterialDialog.Builder(FunFacts.this)
+        mDialog = new MaterialDialog.Builder(FunFacts.this)
                 .title(R.string.app_name)
-                .content("Please wait...")
+                .content(R.string.progress_wait)
                 .progress(true, 0)
                 .show();
     }
 
     @Override
     public void hideProgressDialog() {
-        dialog.dismiss();
+        mDialog.dismiss();
     }
 
     /**
@@ -85,18 +91,17 @@ public class FunFacts extends AppCompatActivity implements FunFactsView {
      * @param factsArray -> JSON array of facts
      */
     @Override
-    public void setupViewPager(final JSONArray factsArray) {
+    public void setupViewPager(final ArrayList<FunFact> factsArray) {
         mHandler.post(new Runnable() {
             @Override
             public void run() {
                 List<Fragment> fList = new ArrayList<>();
-                for (int i = 0; i < factsArray.length(); i++)
-                    try {
-                        fList.add(FunfactFragment.newInstance(factsArray.getJSONObject(i).getString("image"),
-                                factsArray.getJSONObject(i).getString("fact"), name));
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
+                for (int i = 0; i < factsArray.size(); i++) {
+                    FunFact fact = new FunFact(mCity.getNickname(),
+                            factsArray.get(i).getImage(),
+                            factsArray.get(i).getText());
+                    fList.add(FunfactFragment.newInstance(fact));
+                }
                 viewPager.setAdapter(new MyPageAdapter(FunFacts.this.getSupportFragmentManager(), fList));
                 viewPager.setPageTransformer(true, new AccordionTransformer());
             }
@@ -107,21 +112,21 @@ public class FunFacts extends AppCompatActivity implements FunFactsView {
      * Sets adapter for funfacts
      */
     class MyPageAdapter extends FragmentPagerAdapter {
-        private final List<Fragment> fragments;
+        private final List<Fragment> mFragments;
 
         MyPageAdapter(FragmentManager fm, List<Fragment> fragments) {
             super(fm);
-            this.fragments = fragments;
+            this.mFragments = fragments;
         }
 
         @Override
         public Fragment getItem(int position) {
-            return this.fragments.get(position);
+            return this.mFragments.get(position);
         }
 
         @Override
         public int getCount() {
-            return this.fragments.size();
+            return this.mFragments.size();
         }
     }
 }

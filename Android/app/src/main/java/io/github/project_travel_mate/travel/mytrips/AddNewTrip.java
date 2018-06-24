@@ -36,12 +36,15 @@ import butterknife.OnTextChanged;
 import io.github.project_travel_mate.R;
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 
-import static utils.Constants.API_LINK;
-import static utils.Constants.USER_ID;
+import static utils.Constants.API_LINK_V2;
+import static utils.Constants.STATUS_CODE_CREATED;
+import static utils.Constants.USER_TOKEN;
 
 /**
  * Activity to add new trip
@@ -53,15 +56,15 @@ public class AddNewTrip extends AppCompatActivity implements DatePickerDialog.On
     private static final String DATEPICKER_TAG1 = "datepicker1";
     private static final String DATEPICKER_TAG2 = "datepicker2";
 
-    private String nameyet;
-    private String cityid = "2";
-    private String startdate;
-    private String tripname;
-    private String userid;
+    private String mNameyet;
+    private String mCityid = "2";
+    private String mStartdate;
+    private String mTripname;
+    private String mToken;
 
-    private MaterialDialog      dialog;
-    private Handler             mHandler;
-    private DatePickerDialog    datePickerDialog;
+    private MaterialDialog mDialog;
+    private Handler mHandler;
+    private DatePickerDialog mDatePickerDialog;
 
     @BindView(R.id.cityname)
     AutoCompleteTextView    cityname;
@@ -82,13 +85,13 @@ public class AddNewTrip extends AppCompatActivity implements DatePickerDialog.On
         ButterKnife.bind(this);
 
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        userid = sharedPreferences.getString(USER_ID, "1");
         mHandler = new Handler(Looper.getMainLooper());
+        mToken = sharedPreferences.getString(USER_TOKEN, null);
 
         cityname.setThreshold(1);
 
         final Calendar calendar = Calendar.getInstance();
-        datePickerDialog = DatePickerDialog.newInstance(this,
+        mDatePickerDialog = DatePickerDialog.newInstance(this,
                         calendar.get(Calendar.YEAR),
                         calendar.get(Calendar.MONTH),
                         calendar.get(Calendar.DAY_OF_MONTH),
@@ -102,12 +105,10 @@ public class AddNewTrip extends AppCompatActivity implements DatePickerDialog.On
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
     }
 
-
     @OnTextChanged(R.id.cityname) void onTextChanged() {
-        nameyet = cityname.getText().toString();
-        if (!nameyet.contains(" ")) {
-            Log.e("name", nameyet + " ");
-            tripAutoComplete();     // Calls API to autocomplete cityname
+        mNameyet = cityname.getText().toString();
+        if (!mNameyet.contains(" ") && mNameyet.length() % 3 == 0) {
+            cityNameAutoComplete();     // Calls API to autocomplete cityname
         }
     }
 
@@ -115,7 +116,7 @@ public class AddNewTrip extends AppCompatActivity implements DatePickerDialog.On
     public void onDateSet(DatePickerDialog datePickerDialog, int year, int month, int day) {
         if (Objects.equals(datePickerDialog.getTag(), DATEPICKER_TAG1)) {
             Calendar calendar = new GregorianCalendar(year, month, day);
-            startdate = Long.toString(calendar.getTimeInMillis() / 1000);
+            mStartdate = Long.toString(calendar.getTimeInMillis() / 1000);
         }
         if (Objects.equals(datePickerDialog.getTag(), DATEPICKER_TAG2)) {
             Calendar calendar = new GregorianCalendar(year, month, day);
@@ -126,22 +127,24 @@ public class AddNewTrip extends AppCompatActivity implements DatePickerDialog.On
     @Override
     public void onTimeSet(RadialPickerLayout view, int hourOfDay, int minute) { }
 
-
     /**
      * Calls city name autocomplete API
      */
-    private void tripAutoComplete() {
+    private void cityNameAutoComplete() {
 
         // to fetch city names
-        String uri = API_LINK + "city/autocomplete.php?search=" + nameyet.trim();
-        Log.e("executing", uri + " ");
+        String uri = API_LINK_V2 + "get-city-by-name/" + mNameyet.trim();
+        Log.v("EXECUTING", uri);
 
         //Set up client
         OkHttpClient client = new OkHttpClient();
+
         //Execute request
         Request request = new Request.Builder()
+                .header("Authorization", "Token " + mToken)
                 .url(uri)
                 .build();
+
         //Setup callback
         client.newCall(request).enqueue(new Callback() {
             @Override
@@ -157,20 +160,20 @@ public class AddNewTrip extends AppCompatActivity implements DatePickerDialog.On
                     @Override
                     public void run() {
                         JSONArray arr;
-                        final ArrayList names, ids;
+                        final ArrayList<String> names, ids;
                         try {
                             arr = new JSONArray(res);
-                            Log.e("RESPONSE : ", arr + " ");
+                            Log.v("RESPONSE : ", res);
 
                             names = new ArrayList<>();
                             ids = new ArrayList<>();
                             for (int i = 0; i < arr.length(); i++) {
                                 try {
-                                    names.add(arr.getJSONObject(i).getString("name"));
+                                    names.add(arr.getJSONObject(i).getString("city_name"));
                                     ids.add(arr.getJSONObject(i).getString("id"));
                                 } catch (JSONException e) {
                                     e.printStackTrace();
-                                    Log.e("error ", " " + e.getMessage());
+                                    Log.e("ERROR", "Message : " + e.getMessage());
                                 }
                             }
                             ArrayAdapter<String> dataAdapter =
@@ -181,12 +184,12 @@ public class AddNewTrip extends AppCompatActivity implements DatePickerDialog.On
                             cityname.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                                 @Override
                                 public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3) {
-                                    cityid = ids.get(arg2).toString();
+                                    mCityid = ids.get(arg2);
                                 }
                             });
                         } catch (JSONException e) {
                             e.printStackTrace();
-                            Log.e("EXCEPTION : ", e.getMessage() + " ");
+                            Log.e("EXCEPTION : ", "Message : " + e.getMessage());
                         }
                     }
                 });
@@ -200,26 +203,34 @@ public class AddNewTrip extends AppCompatActivity implements DatePickerDialog.On
      */
     private void addTrip() {
 
-        // Show a dialog box
-        dialog = new MaterialDialog.Builder(AddNewTrip.this)
+        // Show a mDialog box
+        mDialog = new MaterialDialog.Builder(AddNewTrip.this)
                 .title(R.string.app_name)
-                .content("Please wait...")
+                .content(R.string.progress_wait)
                 .progress(true, 0)
                 .show();
 
-        String uri = API_LINK + "trip/add-trip.php?user=" + userid +
-                "&title=" + tripname +
-                "&start_time=" + startdate +
-                "&city=" + cityid;
+        String uri = API_LINK_V2 + "add-trip";
 
-        Log.e("CALLING : ", uri);
+        Log.v("EXECUTING", uri);
 
         //Set up client
         OkHttpClient client = new OkHttpClient();
+
+        RequestBody requestBody = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("trip_name", mTripname)
+                .addFormDataPart("city_id", mCityid)
+                .addFormDataPart("start_date_tx", mStartdate)
+                .build();
+
         //Execute request
         Request request = new Request.Builder()
+                .header("Authorization", "Token " + mToken)
+                .post(requestBody)
                 .url(uri)
                 .build();
+
         //Setup callback
         client.newCall(request).enqueue(new Callback() {
             @Override
@@ -229,14 +240,25 @@ public class AddNewTrip extends AppCompatActivity implements DatePickerDialog.On
 
             @Override
             public void onResponse(Call call, final Response response) {
-                mHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Log.e("RESPONSE : ", "Done");
-                        Toast.makeText(AddNewTrip.this, "Trip added", Toast.LENGTH_LONG).show();
-                        dialog.dismiss();
-                    }
-                });
+                try {
+                    final String res = Objects.requireNonNull(response.body()).string();
+                    final int responseCode = response.code();
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (responseCode == STATUS_CODE_CREATED) {
+                                Toast.makeText(AddNewTrip.this, R.string.trip_added, Toast.LENGTH_LONG).show();
+                            } else {
+                                Toast.makeText(AddNewTrip.this, res, Toast.LENGTH_LONG).show();
+                            }
+                        }
+                    });
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                mDialog.dismiss();
+
             }
         });
     }
@@ -261,21 +283,21 @@ public class AddNewTrip extends AppCompatActivity implements DatePickerDialog.On
         switch (view.getId()) {
             // Set Start date
             case R.id.sdate :
-                datePickerDialog.setVibrate(isVibrate());
-                datePickerDialog.setYearRange(1985, 2028);
-                datePickerDialog.setCloseOnSingleTapDay(isCloseOnSingleTapDay());
-                datePickerDialog.show(getSupportFragmentManager(), DATEPICKER_TAG1);
+                mDatePickerDialog.setVibrate(isVibrate());
+                mDatePickerDialog.setYearRange(1985, 2028);
+                mDatePickerDialog.setCloseOnSingleTapDay(isCloseOnSingleTapDay());
+                mDatePickerDialog.show(getSupportFragmentManager(), DATEPICKER_TAG1);
                 break;
             // Set end date
             case R.id.edate :
-                datePickerDialog.setVibrate(isVibrate());
-                datePickerDialog.setYearRange(1985, 2028);
-                datePickerDialog.setCloseOnSingleTapDay(isCloseOnSingleTapDay());
-                datePickerDialog.show(getSupportFragmentManager(), DATEPICKER_TAG2);
+                mDatePickerDialog.setVibrate(isVibrate());
+                mDatePickerDialog.setYearRange(1985, 2028);
+                mDatePickerDialog.setCloseOnSingleTapDay(isCloseOnSingleTapDay());
+                mDatePickerDialog.show(getSupportFragmentManager(), DATEPICKER_TAG2);
                 break;
             // Add a new trip
             case R.id.ok :
-                tripname = tname.getText().toString();
+                mTripname = tname.getText().toString();
                 addTrip();
                 break;
         }

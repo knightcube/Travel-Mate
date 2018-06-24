@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
+import android.support.v4.content.FileProvider;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,11 +22,11 @@ import java.util.Objects;
 
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import io.github.project_travel_mate.BuildConfig;
 import io.github.project_travel_mate.R;
+import objects.FunFact;
 
-import static utils.Constants.EXTRA_MESSAGE_IMAGE;
-import static utils.Constants.EXTRA_MESSAGE_TEXT;
-import static utils.Constants.EXTRA_MESSAGE_TITLE;
+import static utils.Constants.EXTRA_MESSAGE_FUNFACT_OBJECT;
 
 /**
  * Created by swati on 25/1/16.
@@ -34,22 +35,18 @@ import static utils.Constants.EXTRA_MESSAGE_TITLE;
  */
 public class FunfactFragment extends Fragment {
 
-    private File file;
+    private File mFile;
 
     /**
      * instantiate funfact fragment
      *
-     * @param image Image of fun fact
-     * @param text  Fun fact text
-     * @param title Title
+     * @param fact FunFact object
      * @return fragment object
      */
-    public static FunfactFragment newInstance(String image, String text, String title) {
+    public static FunfactFragment newInstance(FunFact fact) {
         FunfactFragment fragment = new FunfactFragment();
         Bundle bdl = new Bundle(1);
-        bdl.putString(EXTRA_MESSAGE_IMAGE, image);
-        bdl.putString(EXTRA_MESSAGE_TEXT, text);
-        bdl.putString(EXTRA_MESSAGE_TITLE, title);
+        bdl.putSerializable(EXTRA_MESSAGE_FUNFACT_OBJECT, fact);
         fragment.setArguments(bdl);
         return fragment;
     }
@@ -72,17 +69,18 @@ public class FunfactFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-        String image    = Objects.requireNonNull(getArguments()).getString(EXTRA_MESSAGE_IMAGE);
-        String text     = getArguments().getString(EXTRA_MESSAGE_TEXT);
-        View v          = inflater.inflate(R.layout.funfact_fragment, container, false);
-        TextView tv     = v.findViewById(R.id.tv);
-        tv.setText(text);
-        tv              = v.findViewById(R.id.head);
-        tv.setText(getArguments().getString(EXTRA_MESSAGE_TITLE));
-        ImageView iv    = v.findViewById(R.id.imag);
-        Picasso.with(getContext()).load(image).error(R.drawable.delhi).placeholder(R.drawable.delhi).into(iv);
-        ButterKnife.bind(this, v);
-        return v;
+        // TODO :: Use butterknife & viewholder
+        FunFact fact = (FunFact) getArguments().getSerializable(EXTRA_MESSAGE_FUNFACT_OBJECT);
+        View view = inflater.inflate(R.layout.funfact_fragment, container, false);
+        if (fact != null) {
+            ((TextView) view.findViewById(R.id.tv)).setText(fact.getText());
+            ((TextView) view.findViewById(R.id.head)).setText(fact.getTitle());
+            Picasso.with(getContext()).load(fact.getImage()).error(R.drawable.delhi)
+                    .placeholder(R.drawable.delhi)
+                    .into((ImageView) view.findViewById(R.id.imag));
+        }
+        ButterKnife.bind(this, view);
+        return view;
     }
 
     @OnClick(R.id.fab) void onClick() {
@@ -92,23 +90,23 @@ public class FunfactFragment extends Fragment {
                 .findViewById(android.R.id.content);
         Bitmap b = getScreenShot(rootView);
         store(b, "myfile" + System.currentTimeMillis() + ".png");
-        shareImage(file);
+        shareImage(mFile);
     }
 
     /**
-     * Store bitmap file in MyScreenshots directory
+     * Store bitmap mFile in MyScreenshots directory
      *
      * @param bitmap   bitmap to be saved
-     * @param fileName Name of bitmap file
+     * @param fileName Name of bitmap mFile
      */
     private void store(Bitmap bitmap, String fileName) {
         String dir = Environment.getExternalStorageDirectory().getAbsolutePath() + "/MyScreenshots";
         File dr = new File(dir);
         if (!dr.exists())
             dr.mkdirs();
-        file = new File(dr, fileName);
+        mFile = new File(dr, fileName);
         try {
-            FileOutputStream fOut = new FileOutputStream(file);
+            FileOutputStream fOut = new FileOutputStream(mFile);
             bitmap.compress(Bitmap.CompressFormat.PNG, 85, fOut);
             fOut.flush();
             fOut.close();
@@ -118,12 +116,12 @@ public class FunfactFragment extends Fragment {
     }
 
     /**
-     * To Share a file via file sharer
+     * To Share a mFile via mFile sharer
      *
      * @param file File location to be shared
      */
     private void shareImage(File file) {
-        Uri uri = Uri.fromFile(file);
+        Uri uri = FileProvider.getUriForFile(getActivity(), "io.github.project_travel_mate.shareFile", file);
         Intent intent = new Intent();
         intent.setAction(Intent.ACTION_SEND);
         intent.setType("image/*");
@@ -132,5 +130,4 @@ public class FunfactFragment extends Fragment {
         intent.putExtra(Intent.EXTRA_STREAM, uri);
         startActivity(Intent.createChooser(intent, "Share Screenshot"));
     }
-
 }

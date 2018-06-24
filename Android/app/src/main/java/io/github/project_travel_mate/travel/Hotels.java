@@ -20,6 +20,7 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.fourmob.datetimepicker.date.DatePickerDialog;
 import com.sleepbot.datetimepicker.time.RadialPickerLayout;
@@ -36,7 +37,6 @@ import java.util.Objects;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import io.github.project_travel_mate.R;
-import io.github.project_travel_mate.SelectCity;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
@@ -46,6 +46,13 @@ import okhttp3.Response;
 import static utils.Constants.API_LINK;
 import static utils.Constants.DESTINATION_CITY;
 import static utils.Constants.DESTINATION_CITY_ID;
+import static utils.Constants.DESTINATION_CITY_LAT;
+import static utils.Constants.DESTINATION_CITY_LON;
+import static utils.Constants.HERE_API_APP_CODE;
+import static utils.Constants.HERE_API_APP_ID;
+import static utils.Constants.HERE_API_LINK;
+import static utils.Constants.MUMBAI_LAT;
+import static utils.Constants.MUMBAI_LON;
 import static utils.Constants.SOURCE_CITY;
 import static utils.Constants.SOURCE_CITY_ID;
 
@@ -65,17 +72,18 @@ public class Hotels extends AppCompatActivity implements DatePickerDialog.OnDate
     @BindView(R.id.city)
     TextView    city;
 
-    private String source;
-    private String dest;
-    private String sourcet;
-    private String destt;
-    private String dates = "17-October-2015";
+    private String mSource;
+    private String mDestination;
+    private String mSourceText;
+    private String mDestinationText;
+    private String mDeslat;
+    private String mDeslon;
+    private String mDate = "17-October-2015";
 
-    DatePickerDialog.OnDateSetListener date;
     private static final String DATEPICKER_TAG = "datepicker";
-    private SharedPreferences sharedPreferences;
+    private SharedPreferences mSharedPreferences;
     private Handler mHandler;
-    private DatePickerDialog datePickerDialog;
+    private DatePickerDialog mDatePickerDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,19 +96,21 @@ public class Hotels extends AppCompatActivity implements DatePickerDialog.OnDate
         ButterKnife.bind(this);
 
         mHandler    = new Handler(Looper.getMainLooper());
-        sharedPreferences           = PreferenceManager.getDefaultSharedPreferences(this);
-        source      = sharedPreferences.getString(SOURCE_CITY_ID, "1");
-        dest        = sharedPreferences.getString(DESTINATION_CITY_ID, "1");
-        sourcet     = sharedPreferences.getString(SOURCE_CITY, "Delhi");
-        destt       = sharedPreferences.getString(DESTINATION_CITY, "Mumbai");
+        mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        mSource = mSharedPreferences.getString(SOURCE_CITY_ID, "1");
+        mDestination = mSharedPreferences.getString(DESTINATION_CITY_ID, "1");
+        mSourceText = mSharedPreferences.getString(SOURCE_CITY, "Delhi");
+        mDestinationText = mSharedPreferences.getString(DESTINATION_CITY, "Mumbai");
+        mDeslat = mSharedPreferences.getString(DESTINATION_CITY_LAT, MUMBAI_LAT);
+        mDeslon = mSharedPreferences.getString(DESTINATION_CITY_LON, MUMBAI_LON);
 
-        String cityText = "Showing " + destt + " hotels";
-        String selectDateText = "Check In : " + dates;
+        String cityText = "Showing " + mDestinationText + " hotels";
+        String selectDateText = "Check In : " + mDate;
         city.setText(cityText);
         selectdate.setText(selectDateText);
 
         final Calendar calendar = Calendar.getInstance();
-        datePickerDialog = DatePickerDialog.newInstance(this,
+        mDatePickerDialog = DatePickerDialog.newInstance(this,
                 calendar.get(Calendar.YEAR),
                 calendar.get(Calendar.MONTH),
                 calendar.get(Calendar.DAY_OF_MONTH),
@@ -129,7 +139,7 @@ public class Hotels extends AppCompatActivity implements DatePickerDialog.OnDate
 
     @Override
     public void onDateSet(DatePickerDialog datePickerDialog, int year, int month, int day) {
-        dates = day + "-";
+        mDate = day + "-";
         String monthString;
         switch (month + 1) {
             case 1: monthString = "January";    break;
@@ -147,9 +157,9 @@ public class Hotels extends AppCompatActivity implements DatePickerDialog.OnDate
             default:monthString = "Invalid month"; break;
         }
 
-        dates = dates + monthString;
-        dates = dates + "-" + year;
-        String selectDateText = "Check In : " + dates;
+        mDate = mDate + monthString;
+        mDate = mDate + "-" + year;
+        String selectDateText = "Check In : " + mDate;
         selectdate.setText(selectDateText);
 
         getHotellist();
@@ -164,13 +174,11 @@ public class Hotels extends AppCompatActivity implements DatePickerDialog.OnDate
     private void getHotellist() {
 
         pb.setVisibility(View.VISIBLE);
-        String uri = API_LINK +
-                "get-city-hotels.php?id=" +
-                dest +
-                "&date=" +
-                dates;
+        String uri = HERE_API_LINK + "?at=" + mDeslat + "," + mDeslon + "&cat=accomodation&app_id=" +
+                HERE_API_APP_ID + "&app_code=" + HERE_API_APP_CODE;
 
-        Log.e("CALLING : ", uri);
+
+        Log.v("EXECUTING", uri);
 
         //Set up client
         OkHttpClient client = new OkHttpClient();
@@ -191,17 +199,25 @@ public class Hotels extends AppCompatActivity implements DatePickerDialog.OnDate
                 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        Log.e("RESPONSE : ", "Done");
                         try {
-                            JSONObject feed = new JSONObject(String.valueOf(res));
-                            JSONArray feedItems = feed.getJSONArray("hotels");
-                            Log.e("response", feedItems + " ");
+                            JSONObject json = new JSONObject(res);
+                            Log.v("Response", res);
+                            json = json.getJSONObject("results");
+                            JSONArray feedItems = json.getJSONArray("items");
+
+                            Log.v("response", feedItems + " ");
                             pb.setVisibility(View.GONE);
-                            lv.setAdapter(new HotelsAdapter(Hotels.this, feedItems));
-                            pb.setVisibility(View.GONE);
+                            if (feedItems.length() > 0) {
+                                lv.setAdapter(new HotelsAdapter(Hotels.this, feedItems));
+                            } else {
+                                Toast.makeText(Hotels.this,
+                                        getResources().getString(R.string.no_hotels),
+                                        Toast.LENGTH_LONG).show();
+                            }
                         } catch (JSONException e1) {
                             e1.printStackTrace();
                         }
+                        pb.setVisibility(View.GONE);
 
                     }
                 });
@@ -212,11 +228,11 @@ public class Hotels extends AppCompatActivity implements DatePickerDialog.OnDate
     @Override
     protected void onResume() {
         super.onResume();
-        source =    sharedPreferences.getString(SOURCE_CITY_ID, "1");
-        dest =      sharedPreferences.getString(DESTINATION_CITY_ID, "1");
-        sourcet =   sharedPreferences.getString(SOURCE_CITY, "Delhi");
-        destt =     sharedPreferences.getString(DESTINATION_CITY, "Mumbai");
-        String cityText = "Showing " + destt + " hotels";
+        mSource =    mSharedPreferences.getString(SOURCE_CITY_ID, "1");
+        mDestination =      mSharedPreferences.getString(DESTINATION_CITY_ID, "1");
+        mSourceText =   mSharedPreferences.getString(SOURCE_CITY, "Delhi");
+        mDestinationText =     mSharedPreferences.getString(DESTINATION_CITY, "Mumbai");
+        String cityText = "Showing " + mDestinationText + " hotels";
         city.setText(cityText);
         getHotellist();
     }
@@ -231,29 +247,27 @@ public class Hotels extends AppCompatActivity implements DatePickerDialog.OnDate
 
     class HotelsAdapter extends BaseAdapter {
 
-        final Context context;
-        final JSONArray feedItems;
-        private final LayoutInflater inflater;
+        final Context mContext;
+        final JSONArray mFeedItems;
+        private final LayoutInflater mInflater;
 
-            HotelsAdapter(Context context, JSONArray feedItems) {
-            this.context = context;
-            this.feedItems = feedItems;
+        HotelsAdapter(Context context, JSONArray feedItems) {
+            this.mContext = context;
+            this.mFeedItems = feedItems;
 
-            inflater = (LayoutInflater) context
+            mInflater = (LayoutInflater) context
                     .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         }
 
         @Override
         public int getCount() {
-            // TODO Auto-generated method stub
-            return feedItems.length();
+            return mFeedItems.length();
         }
 
         @Override
         public Object getItem(int position) {
-            // TODO Auto-generated method stub
             try {
-                return feedItems.getJSONObject(position);
+                return mFeedItems.getJSONObject(position);
             } catch (JSONException e) {
                 e.printStackTrace();
             }
@@ -270,10 +284,11 @@ public class Hotels extends AppCompatActivity implements DatePickerDialog.OnDate
         public View getView(final int position, View convertView, ViewGroup parent) {
             View vi = convertView;
             if (vi == null)
-                vi = inflater.inflate(R.layout.hotel_listitem, parent, false);
+                vi = mInflater.inflate(R.layout.hotel_listitem, parent, false);
 
             LinearLayout call, map, book;
 
+            // TODO:: Use butterknife & viewholder
             TextView title          = vi.findViewById(R.id.VideoTitle);
             TextView description    = vi.findViewById(R.id.VideoDescription);
             call                    = vi.findViewById(R.id.call);
@@ -281,16 +296,17 @@ public class Hotels extends AppCompatActivity implements DatePickerDialog.OnDate
             book                    = vi.findViewById(R.id.book);
 
             try {
-                title.setText(feedItems.getJSONObject(position).getString("name"));
-                description.setText(feedItems.getJSONObject(position).getString("address"));
+                title.setText(mFeedItems.getJSONObject(position).getString("title"));
+                description.setText(mFeedItems.getJSONObject(position).getString("vicinity"));
 
                 call.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
                         Intent intent = new Intent(Intent.ACTION_DIAL);
                         try {
-                            intent.setData(Uri.parse("tel:" + feedItems.getJSONObject(position).getString("phone")));
-                            context.startActivity(intent);
+                            intent.setData(Uri.parse("tel:" +
+                                    mFeedItems.getJSONObject(position).optString("phone", "000")));
+                            mContext.startActivity(intent);
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
@@ -301,14 +317,17 @@ public class Hotels extends AppCompatActivity implements DatePickerDialog.OnDate
                     public void onClick(View view) {
                         Intent browserIntent;
                         try {
+                            Double latitude = Double.parseDouble(
+                                    mFeedItems.getJSONObject(position).getJSONArray("position").get(0).toString());
+                            Double longitude = Double.parseDouble(
+                                    mFeedItems.getJSONObject(position).getJSONArray("position").get(1).toString());
+
                             browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps?q=" +
-                                    feedItems.getJSONObject(position).getString("name") +
-                                    "+(name)+@" +
-                                    feedItems.getJSONObject(position).getString("lat") +
-                                    "," +
-                                    feedItems.getJSONObject(position).getString("lng")
-                            ));
-                            context.startActivity(browserIntent);
+                                    mFeedItems.getJSONObject(position).getString("title") +
+                                    "+(name)+@" + latitude +
+                                    "," + longitude));
+
+                            mContext.startActivity(browserIntent);
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
@@ -321,18 +340,18 @@ public class Hotels extends AppCompatActivity implements DatePickerDialog.OnDate
                         Intent browserIntent = null;
                         try {
                             browserIntent = new Intent(Intent.ACTION_VIEW,
-                                    Uri.parse(feedItems.getJSONObject(position).getString("websites")));
+                                    Uri.parse(mFeedItems.getJSONObject(position).getString("href")));
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
-                        context.startActivity(browserIntent);
+                        mContext.startActivity(browserIntent);
 
                     }
                 });
 
             } catch (JSONException e) {
                 e.printStackTrace();
-                Log.e("ERROR : ", e.getMessage() + " ");
+                Log.e("ERROR : ", "Message : " + e.getMessage());
             }
             return vi;
         }
@@ -341,14 +360,13 @@ public class Hotels extends AppCompatActivity implements DatePickerDialog.OnDate
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.city :
-                Intent i = new Intent(Hotels.this, SelectCity.class);
-                startActivity(i);
+                //TODO :: show a dialog with list of cities
                 break;
             case R.id.seldate :
-                datePickerDialog.setVibrate(isVibrate());
-                datePickerDialog.setYearRange(1985, 2028);
-                datePickerDialog.setCloseOnSingleTapDay(isCloseOnSingleTapDay());
-                datePickerDialog.show(getSupportFragmentManager(), DATEPICKER_TAG);
+                mDatePickerDialog.setVibrate(isVibrate());
+                mDatePickerDialog.setYearRange(1985, 2028);
+                mDatePickerDialog.setCloseOnSingleTapDay(isCloseOnSingleTapDay());
+                mDatePickerDialog.show(getSupportFragmentManager(), DATEPICKER_TAG);
                 break;
         }
     }

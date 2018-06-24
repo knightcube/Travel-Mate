@@ -2,10 +2,12 @@ package io.github.project_travel_mate.travel.mytrips;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MenuItem;
@@ -25,7 +27,6 @@ import com.squareup.picasso.Picasso;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.lucasr.twowayview.TwoWayView;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,14 +43,17 @@ import butterknife.ButterKnife;
 import butterknife.OnClick;
 import butterknife.OnTextChanged;
 import io.github.project_travel_mate.R;
+import objects.Trip;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import utils.Constants;
 
-import static utils.Constants.API_LINK;
+import static utils.Constants.API_LINK_V2;
+import static utils.Constants.EXTRA_MESSAGE_TRIP_OBJECT;
+import static utils.Constants.STATUS_CODE_OK;
+import static utils.Constants.USER_TOKEN;
 
 public class MyTripInfo extends AppCompatActivity {
 
@@ -61,24 +65,20 @@ public class MyTripInfo extends AppCompatActivity {
     TextView date;
     @BindView(R.id.newfrriend)
     FlatButton add;
-    @BindView(R.id.lv)
-    TwoWayView twoway;
     @BindView(R.id.friendlist)
     NestedListView lv;
     @BindView(R.id.fname)
     AutoCompleteTextView frendname;
 
-    private String id;
-    private String title;
-    private String start;
-    private String end;
-    private String city;
-    private String friendid;
-    private String nameyet;
+    private String mFriendid = null;
+    private String mNameYet;
+    private String mToken;
 
-    private List<String> fname;
+    private Trip mTrip;
 
-    private MaterialDialog dialog;
+    private List<String> mFname;
+
+    private MaterialDialog mDialog;
     private Handler mHandler;
     public static final int INTENT_REQUEST_GET_IMAGES = 13;
 
@@ -90,68 +90,65 @@ public class MyTripInfo extends AppCompatActivity {
         ButterKnife.bind(this);
 
         Intent intent = getIntent();
-        id          = intent.getStringExtra(Constants.EXTRA_MESSAGE_ID);
-        String img = intent.getStringExtra(Constants.EXTRA_MESSAGE_IMAGE);
+        mTrip = (Trip) intent.getSerializableExtra(EXTRA_MESSAGE_TRIP_OBJECT);
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        mToken = sharedPreferences.getString(USER_TOKEN, null);
 
         List<File> mediaimages = new ArrayList<>();
         List<File> imagesuri = new ArrayList<>();
-        fname       = new ArrayList<>();
+        mFname = new ArrayList<>();
 
-        Picasso.with(this).load(img).into(iv);
+        Picasso.with(this).load(mTrip.getImage()).into(iv);
 
         mHandler    = new Handler(Looper.getMainLooper());
 
-        String mainfolder = "/storage/emulated/0/Pictures/";
-        File sdDir  = new File(mainfolder);
-        File[] sdDirFiles = sdDir.listFiles();
-        for (File singleFile : sdDirFiles) {
-            if (!singleFile.isDirectory())
-                mediaimages.add(singleFile);
-        }
-        mediaimages.add(null);
-
-        MyTripInfoImagesAdapter ad = new MyTripInfoImagesAdapter(this, mediaimages);
-        twoway.setAdapter(ad);
-
         frendname.setThreshold(1);
 
-        mytrip();
+        getSingleTrip();
 
         Objects.requireNonNull(getSupportActionBar()).setHomeButtonEnabled(true);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
     }
 
     @OnTextChanged(R.id.fname) void onTextChanged() {
-        nameyet = frendname.getText().toString();
-        if (!nameyet.contains(" ")) {
-            Log.e("name", nameyet + " ");
+        mNameYet = frendname.getText().toString();
+        if (!mNameYet.contains(" ") && mNameYet.length() % 3 == 0) {
             friendautocomplete();
         }
     }
 
     @OnClick(R.id.newfrriend) void onClick() {
-        addfriend();
+        if (mFriendid == null) {
+            Toast.makeText(MyTripInfo.this,
+                    getResources().getString(R.string.no_friend_selected),
+                    Toast.LENGTH_LONG).show();
+        } else {
+            addfriend();
+        }
     }
 
-    private void mytrip() {
+    private void getSingleTrip() {
 
-        dialog = new MaterialDialog.Builder(MyTripInfo.this)
+        mDialog = new MaterialDialog.Builder(MyTripInfo.this)
                 .title(R.string.app_name)
-                .content("Fetching trips...")
+                .content(R.string.progress_fetching_trip)
                 .progress(true, 0)
                 .show();
 
-        // to fetch city names
-        String uri = API_LINK + "trip/get-one.php?trip=" + id;
-        Log.e("executing", uri + " ");
+        // to fetch mCity names
+        String uri = API_LINK_V2 + "get-trip/" + mTrip.getId();
 
+        Log.v("EXECUTING", uri);
 
         //Set up client
         OkHttpClient client = new OkHttpClient();
         //Execute request
         Request request = new Request.Builder()
+                .header("Authorization", "Token " + mToken)
                 .url(uri)
                 .build();
+
         //Setup callback
         client.newCall(request).enqueue(new Callback() {
             @Override
@@ -169,10 +166,10 @@ public class MyTripInfo extends AppCompatActivity {
                         JSONObject ob;
                         try {
                             ob = new JSONObject(res);
-                            title = ob.getString("title");
-                            start = ob.getString("start_time");
-                            end = ob.getString("end_time");
-                            city = ob.getString("city");
+                            String title = ob.getString("trip_name");
+                            String start = ob.getString("start_date_tx");
+                            String end = ob.optString("end_date", null);
+                            String city = ob.getJSONObject("city").getString("city_name");
 
                             tite.setText(city);
                             tite = findViewById(R.id.tname);
@@ -184,23 +181,19 @@ public class MyTripInfo extends AppCompatActivity {
                                     new SimpleDateFormat("dd-MMM", Locale.US).format(cal.getTime());
                             date.setText(timeString);
 
-                            JSONArray arrr = ob.getJSONArray("users");
-                            for (int i = 0; i < arrr.length(); i++) {
-                                fname.add(arrr.getJSONObject(i).getString("name"));
-
-                                Log.e("fvdvdf", "adding " + arrr.getJSONObject(i).getString("name"));
+                            JSONArray usersArray = ob.getJSONArray("users");
+                            for (int i = 0; i < usersArray.length(); i++) {
+                                mFname.add(usersArray.getJSONObject(i).getString("first_name"));
                             }
 
-                            Log.e("vdsv", fname.size() + " ");
-
-                            MyTripFriendnameAdapter dataAdapter = new MyTripFriendnameAdapter(MyTripInfo.this, fname);
+                            MyTripFriendnameAdapter dataAdapter = new MyTripFriendnameAdapter(MyTripInfo.this, mFname);
                             lv.setAdapter(dataAdapter);
-
 
                         } catch (JSONException e1) {
                             e1.printStackTrace();
                         }
-                        dialog.dismiss();
+                        mDialog.dismiss();
+                        mFriendid = null;
                     }
                 });
 
@@ -212,13 +205,8 @@ public class MyTripInfo extends AppCompatActivity {
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == INTENT_REQUEST_GET_IMAGES && resultCode == Activity.RESULT_OK) {
-
             ArrayList<Uri> imageUris = data.getParcelableArrayListExtra(ImagePickerActivity.EXTRA_IMAGE_URIS);
-            for (int i = 0; i < imageUris.size(); i++) {
-                Log.e("cdscsd", imageUris.get(i).getPath());
-            }
             Toast.makeText(MyTripInfo.this, "Images added", Toast.LENGTH_LONG).show();
-
         }
     }
 
@@ -231,13 +219,14 @@ public class MyTripInfo extends AppCompatActivity {
 
     private void friendautocomplete() {
 
-        String uri = API_LINK + "users/find.php?search=" + nameyet.trim();
-        Log.e("executing", uri + " ");
+        String uri = API_LINK_V2 + "get-user/" + mNameYet.trim();
+        Log.v("EXECUTING", uri);
 
         //Set up client
         OkHttpClient client = new OkHttpClient();
         //Execute request
-        Request request = new Request.Builder()
+        final Request request = new Request.Builder()
+                .header("Authorization", "Token " + mToken)
                 .url(uri)
                 .build();
         //Setup callback
@@ -253,43 +242,42 @@ public class MyTripInfo extends AppCompatActivity {
                 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        Log.e("YO", "Done");
                         JSONArray arr;
-                        final ArrayList list, list1;
+                        final ArrayList<String> id, email;
                         try {
-                            arr = new JSONArray(Objects.requireNonNull(response.body()).string());
+                            String result = response.body().string();
+                            Log.e("RES", result);
+                            if (response.body() == null)
+                                return;
+                            arr = new JSONArray(result);
 
-                            list = new ArrayList<>();
-                            list1 = new ArrayList<>();
+                            id = new ArrayList<>();
+                            email = new ArrayList<>();
                             for (int i = 0; i < arr.length(); i++) {
                                 try {
-                                    list.add(arr.getJSONObject(i).getString("name"));
-                                    list1.add(arr.getJSONObject(i).getString("id"));
-                                    Log.e("adding", "aff");
-
+                                    id.add(arr.getJSONObject(i).getString("id"));
+                                    email.add(arr.getJSONObject(i).getString("username"));
                                 } catch (JSONException e) {
                                     e.printStackTrace();
-                                    Log.e("error ", " " + e.getMessage());
+                                    Log.e("ERROR ", "Message : " + e.getMessage());
                                 }
                             }
                             ArrayAdapter<String> dataAdapter =
-                                    new ArrayAdapter<>(getApplicationContext(), R.layout.spinner_layout, list);
+                                    new ArrayAdapter<>(getApplicationContext(), R.layout.spinner_layout, email);
                             dataAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-                            frendname.setThreshold(1);
                             frendname.setAdapter(dataAdapter);
                             frendname.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                                 @Override
                                 public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3) {
-                                    friendid = list1.get(arg2).toString();
+                                    mFriendid = id.get(arg2);
                                 }
                             });
                         } catch (JSONException e) {
                             e.printStackTrace();
-                            Log.e("erro", e.getMessage() + " ");
+                            Log.e("ERROR", "Message : " + e.getMessage());
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
-
                     }
                 });
 
@@ -299,19 +287,21 @@ public class MyTripInfo extends AppCompatActivity {
 
     private void addfriend() {
 
-        dialog = new MaterialDialog.Builder(MyTripInfo.this)
+        mDialog = new MaterialDialog.Builder(MyTripInfo.this)
                 .title(R.string.app_name)
-                .content("Please wait...")
+                .content(R.string.progress_wait)
                 .progress(true, 0)
                 .show();
 
-        String uri = API_LINK + "trip/add-user.php?user=" + friendid + "&trip=" + id;
-        Log.e("executing", uri + " ");
+        String uri = API_LINK_V2 + "add-friend-to-trip/" + mTrip.getId() + "/" + mFriendid;
+
+        Log.v("EXECUTING", uri);
 
         //Set up client
         OkHttpClient client = new OkHttpClient();
         //Execute request
         Request request = new Request.Builder()
+                .header("Authorization", "Token " + mToken)
                 .url(uri)
                 .build();
         //Setup callback
@@ -323,16 +313,23 @@ public class MyTripInfo extends AppCompatActivity {
 
             @Override
             public void onResponse(Call call, final Response response) {
-
-                mHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(MyTripInfo.this, "City added", Toast.LENGTH_LONG).show();
-                        finish();
-                        dialog.dismiss();
-                    }
-                });
-
+                try {
+                    final String res = response.body().string();
+                    final int responseCode = response.code();
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (responseCode == STATUS_CODE_OK) {
+                                Toast.makeText(MyTripInfo.this, R.string.friend_added, Toast.LENGTH_LONG).show();
+                            } else {
+                                Toast.makeText(MyTripInfo.this, res, Toast.LENGTH_LONG).show();
+                            }
+                            mDialog.dismiss();
+                        }
+                    });
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         });
     }

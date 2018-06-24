@@ -1,5 +1,6 @@
 package objects;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -7,14 +8,16 @@ import java.util.List;
 /**
  * Model class for city object
  */
-public class City {
-    private final String avatar;
-    private final String nickname;
-    private final String id;
-    private final String la;
-    private final String lo;
-    private final int background;
-    private final List<String> interests = new ArrayList<>();
+public class City implements Serializable {
+
+    private String mAvatar;
+    private String mNickname;
+    private String mDescription;
+    private String mId;
+    private String mLatitude;
+    private String mLongitude;
+    private int mBackground;
+    private final List<String> mInterests = new ArrayList<>();
 
     /**
      * Instantiates city object
@@ -22,47 +25,60 @@ public class City {
      * @param id         unique id for a city
      * @param avatar     city image
      * @param nickname   city name
+     * @param description   city description
      * @param background Background color when card is opened
      * @param lat        latitude of city
      * @param lon        longitude of city
      * @param interest   list of items when string is opened
      */
-    public City(String id, String avatar, String nickname, int background, String lat, String lon, String... interest) {
-        this.avatar = avatar;
-        this.id = id;
-        this.la = lat;
-        this.lo = lon;
-        this.nickname = nickname;
-        this.background = background;
-        interests.addAll(Arrays.asList(interest));
+    public City(String id, String avatar, String nickname, String description,
+                int background, String lat, String lon, String... interest) {
+        this.mAvatar = avatar;
+        this.mId = id;
+        this.mLatitude = lat;
+        this.mLongitude = lon;
+        this.mNickname = nickname;
+        this.mDescription = description;
+        this.mBackground = background;
+        mInterests.addAll(Arrays.asList(interest));
+    }
+
+    public City( String mId, String mAvatar, String mNickname) {
+        this.mAvatar = mAvatar;
+        this.mNickname = mNickname;
+        this.mId = mId;
     }
 
     public String getAvatar() {
-        return avatar;
+        return mAvatar;
     }
 
     public String getNickname() {
-        return nickname;
+        return mNickname;
+    }
+
+    public String getDescription() {
+        return mDescription;
     }
 
     public String getId() {
-        return id;
+        return mId;
     }
 
-    public String getLa() {
-        return la;
+    public String getLatitude() {
+        return mLatitude;
     }
 
-    public String getLo() {
-        return lo;
+    public String getLongitude() {
+        return mLongitude;
     }
 
     public int getBackground() {
-        return background;
+        return mBackground;
     }
 
     public List<String> getInterests() {
-        return interests;
+        return mInterests;
     }
 
 }

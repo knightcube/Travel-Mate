@@ -34,11 +34,13 @@ public class Splash extends AppCompatActivity {
         pathView.useNaturalColors();
         pathView.setFillAfter(true);
 
+        // TODO :: check for the user_token here & redirect to corresponding class
+        // If token is null -> LoginActivity, else Mainactivity
         new Handler().postDelayed(new Runnable() {
 
             @Override
             public void run() {
-                Intent i = new Intent(Splash.this, LoginActivity.class);
+                Intent i = new Intent(Splash.this, MainActivity.class);
                 startActivity(i);
                 finish();
             }
