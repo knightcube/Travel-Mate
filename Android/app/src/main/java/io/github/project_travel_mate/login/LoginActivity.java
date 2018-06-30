@@ -1,6 +1,7 @@
 package io.github.project_travel_mate.login;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -9,19 +10,23 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.preference.PreferenceManager;
+import android.support.design.widget.Snackbar;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Patterns;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.afollestad.materialdialogs.MaterialDialog;
 import com.dd.processbutton.FlatButton;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -36,42 +41,42 @@ import static utils.Constants.USER_TOKEN;
  */
 public class LoginActivity extends AppCompatActivity implements View.OnClickListener, LoginView {
 
+    private final LoginPresenter mLoginPresenter = new LoginPresenter();
     @BindView(R.id.signup)
-    TextView        signup;
+    TextView signup;
     @BindView(R.id.login)
-    TextView        login;
+    TextView login;
     @BindView(R.id.signup_layout)
-    LinearLayout    sig;
+    LinearLayout sig;
     @BindView(R.id.loginlayout)
-    LinearLayout    log;
+    LinearLayout log;
     @BindView(R.id.input_email_login)
-    EditText        email_login;
+    EditText email_login;
     @BindView(R.id.input_pass_login)
-    EditText        pass_login;
+    EditText pass_login;
     @BindView(R.id.input_email_signup)
-    EditText        email_signup;
+    EditText email_signup;
     @BindView(R.id.input_pass_signup)
-    EditText        pass_signup;
-    @BindView(R.id.input_name_signup)
-    EditText        name;
+    EditText pass_signup;
+    @BindView(R.id.input_confirm_pass_signup)
+    EditText confirm_pass_signup;
+    @BindView(R.id.input_firstname_signup)
+    EditText firstName;
+    @BindView(R.id.input_lastname_signup)
+    EditText lastName;
     @BindView(R.id.ok_login)
-    FlatButton      ok_login;
+    FlatButton ok_login;
     @BindView(R.id.ok_signup)
-    FlatButton      ok_signup;
-
+    FlatButton ok_signup;
     private SharedPreferences mSharedPreferences;
     private MaterialDialog mDialog;
     private Handler mHandler;
-
-    private final LoginPresenter mLoginPresenter = new LoginPresenter();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
         getSupportActionBar().hide();
 
         Window window = this.getWindow();
@@ -110,25 +115,43 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
     public void onClick(View view) {
         switch (view.getId()) {
             // Open signup
-            case R.id.signup :
+            case R.id.signup:
+                signup.setVisibility(View.GONE);
+                login.setVisibility(View.VISIBLE);
                 mLoginPresenter.signUp();
                 break;
             // Open login
-            case R.id.login :
+            case R.id.login:
+                signup.setVisibility(View.VISIBLE);
+                login.setVisibility(View.GONE);
                 mLoginPresenter.login();
                 break;
             // Call login
-            case R.id.ok_login :
+            case R.id.ok_login:
                 String emailString = email_login.getText().toString();
                 String passString = pass_login.getText().toString();
                 mLoginPresenter.ok_login(emailString, passString, mHandler);
                 break;
             // Call signup
-            case R.id.ok_signup :
+            case R.id.ok_signup:
                 emailString = email_signup.getText().toString();
                 passString = pass_signup.getText().toString();
-                String nameString = name.getText().toString();
-                mLoginPresenter.ok_signUp(nameString, emailString, passString, mHandler);
+                String confirmPassString = confirm_pass_signup.getText().toString();
+                String firstname = firstName.getText().toString();
+                String lastname = lastName.getText().toString();
+                if (validateEmail(emailString)) {
+                    if (validatePassword(passString)) {
+                        if (passString.equals(confirmPassString)) {
+                            mLoginPresenter.ok_signUp(firstname, lastname, emailString, passString, mHandler);
+                        } else {
+                            Snackbar snackbar = Snackbar
+                                    .make(findViewById(android.R.id.content), 
+                                          R.string.passwords_check, Snackbar.LENGTH_LONG);
+                            snackbar.show();
+                        }
+                    }
+                }
+
                 break;
         }
     }
@@ -143,15 +166,17 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
 
     @Override
     public void startMainActivity() {
-        Intent i = new Intent(this, MainActivity.class);
+        Intent i = MainActivity.getStartIntent(this);
         startActivity(i);
         finish();
     }
 
     @Override
     public void showError() {
-        Toast.makeText(this, R.string.toast_invalid_username_or_password, Toast.LENGTH_LONG)
-                .show();
+        Snackbar snackbar = Snackbar
+                .make(findViewById(android.R.id.content), 
+                      R.string.toast_invalid_username_or_password, Snackbar.LENGTH_LONG);
+        snackbar.show();
     }
 
     @Override
@@ -197,7 +222,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
     @Override
     public void checkUserSession() {
         if (mSharedPreferences.getString(USER_TOKEN, null) != null) {
-            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+            Intent intent = MainActivity.getStartIntent(LoginActivity.this);
             startActivity(intent);
             finish();
         }
@@ -218,8 +243,59 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
     public void setLoginEmail(String email) {
         email_login.setText(email);
     }
+
     public void showMessage(String message) {
-        Toast.makeText(this, message, Toast.LENGTH_LONG)
-                .show();
+        Snackbar snackbar = Snackbar
+                .make(findViewById(android.R.id.content), message, Snackbar.LENGTH_LONG);
+        snackbar.show();
+    }
+
+    /**
+     * Validates the given email, checks if given email proper format as standard email string
+     * @param email email string to be validate
+     * @return Boolean returns true if email format is correct, otherwise false
+     */
+    public boolean validateEmail(String email) {
+        Matcher matcher = Patterns.EMAIL_ADDRESS.matcher(email);
+        if (!email.equals("") && matcher.matches()) {
+            return true;
+        } else {
+            Snackbar snackbar = Snackbar
+                    .make(findViewById(android.R.id.content), R.string.invalid_email, Snackbar.LENGTH_LONG);
+            snackbar.show();
+            return false;
+        }
+    }
+/**
+     * Validates the given password, checks if given password proper format as standard password string
+     * @param passString password string to be validate
+     * @return Boolean returns true if email format is correct, otherwise false
+     */
+    public boolean validatePassword(String passString) {
+        if (passString.length() >= 8) {
+            Pattern pattern;
+            Matcher matcher;
+            final String PASSWORD_PATTERN = "^(?=.*[0-9])(?=.*[A-Z])(?=.*[@#$%^&+=!])(?=\\S+$).{4,}$";
+            pattern = Pattern.compile(PASSWORD_PATTERN);
+            matcher = pattern.matcher(passString);
+
+            if (matcher.matches()) {
+                return true;
+            } else {
+                Snackbar snackbar = Snackbar
+                        .make(findViewById(android.R.id.content), R.string.invalid_password, Snackbar.LENGTH_LONG);
+                snackbar.show();
+                return false;
+            }
+        } else {
+            Snackbar snackbar = Snackbar
+                    .make(findViewById(android.R.id.content), R.string.password_length, Snackbar.LENGTH_LONG);
+            snackbar.show();
+            return false;
+        }
+    }
+    public static Intent getStartIntent(Context context) {
+        Intent intent = new Intent(context, LoginActivity.class);
+        return intent;
     }
 }

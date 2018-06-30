@@ -44,12 +44,14 @@ class LoginPresenter {
     /**
      * Calls Signup API
      *
-     * @param name      user's name
+     * @param firstname user's first name
+     * @param lastname  user's last name
      * @param email     user's email id
      * @param pass      password user entered
      * @param mhandler  handler
      */
-    public void ok_signUp(final String name, final String email, String pass, final Handler mhandler) {
+    public void ok_signUp(final String firstname, final String lastname, final String email,
+                          String pass, final Handler mhandler) {
 
         mView.showLoadingDialog();
 
@@ -62,8 +64,8 @@ class LoginPresenter {
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("email", email)
                 .addFormDataPart("password", pass)
-                .addFormDataPart("firstname", name)
-                .addFormDataPart("lastname", name)
+                .addFormDataPart("firstname", firstname)
+                .addFormDataPart("lastname", lastname)
                 .build();
 
         //Execute request
@@ -84,32 +86,29 @@ class LoginPresenter {
 
                 final String res = Objects.requireNonNull(response.body()).string();
                 final int responseCode = response.code();
-                mhandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            String successfulMessage = "\"Successfully registered\"";
-                            Log.i("LoginPresenter", "run: "+responseCode);
-                            Log.i("LoginPresenter", "run: "+res);
-                            if (responseCode == STATUS_CODE_CREATED &&  res.equals(successfulMessage)) {
-                                //if successful redirect to login
-                                mView.openLogin();
-                                mView.setLoginEmail(email);
-                                mView.showMessage("signup succeeded! please login");
-                            } else {
-                                // show error message
-                                mView.showMessage(res);
-                            }
-                            mView.dismissLoadingDialog();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            mView.showError();
+
+                mhandler.post(() -> {
+                    try {
+                        String successfulMessage = "\"Successfully registered\"";
+                        if (responseCode == STATUS_CODE_CREATED && res.equals(successfulMessage)) {
+                            //if successful redirect to login
+                            mView.openLogin();
+                            mView.setLoginEmail(email);
+                            mView.showMessage("signup succeeded! please login");
+                        } else {
+                            // show error message
+                            mView.showMessage(res);
                         }
+                        mView.dismissLoadingDialog();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        mView.showError();
                     }
                 });
             }
         });
     }
+
 
     public void login() {
         mView.openLogin();
@@ -119,8 +118,8 @@ class LoginPresenter {
      * Calls Login API and checks for validity of credentials
      * If yes, transfer to MainActivity
      *
-     * @param email     user's email id
-     * @param pass      password user entered
+     * @param email user's email id
+     * @param pass  password user entered
      */
     public void ok_login(final String email, String pass, final Handler mhandler) {
 
@@ -153,24 +152,21 @@ class LoginPresenter {
             public void onResponse(Call call, final Response response) throws IOException {
                 final String res = Objects.requireNonNull(response.body()).string();
                 final int responseCode = response.code();
-                mhandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            if (responseCode == STATUS_CODE_OK) {
-                                JSONObject responeJsonObject = new JSONObject(res);
-                                String token = responeJsonObject.getString("token");
-                                mView.rememberUserInfo(token, email);
-                                mView.startMainActivity();
-                            } else {
-                                mView.showError();
+                mhandler.post(() -> {
+                            try {
+                                if (responseCode == STATUS_CODE_OK) {
+                                    JSONObject responeJsonObject = new JSONObject(res);
+                                    String token = responeJsonObject.getString("token");
+                                    mView.rememberUserInfo(token, email);
+                                    mView.startMainActivity();
+                                } else {
+                                    mView.showError();
+                                }
+                                mView.dismissLoadingDialog();
+                            } catch (JSONException e) {
+                                e.printStackTrace();
                             }
-                            mView.dismissLoadingDialog();
-                        } catch (JSONException e) {
-                            e.printStackTrace();
                         }
-                    }
-                    }
                 );
             }
         });

@@ -24,11 +24,17 @@ import utils.CardItemEntity;
 
 public class UtilitiesFragment extends Fragment implements CardViewOptionsAdapter.OnItemClickListener {
 
-    private Activity mActivity;
     @BindView(R.id.utility_options_recycle_view)
     RecyclerView mUtilityOptionsRecycleView;
+    private Activity mActivity;
 
-    public UtilitiesFragment() {}
+    public UtilitiesFragment() {
+    }
+
+    public static UtilitiesFragment newInstance() {
+        UtilitiesFragment fragment = new UtilitiesFragment();
+        return fragment;
+    }
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
@@ -60,17 +66,17 @@ public class UtilitiesFragment extends Fragment implements CardViewOptionsAdapte
         Intent intent;
         switch (position) {
             case 0:
-                intent = new Intent(mActivity, ShareContact.class);
+                intent = ShareContactActivity.getStartIntent(mActivity);
                 startActivity(intent);
                 break;
             case 1:
-                intent = new Intent(mActivity, Checklist.class);
+                intent = ChecklistActivity.getStartIntent(mActivity);
                 startActivity(intent);
                 break;
         }
     }
 
-    List<CardItemEntity> getUtilityItems() {
+    private List<CardItemEntity> getUtilityItems() {
         List<CardItemEntity> cardEntities = new ArrayList<>();
         cardEntities.add(
                 new CardItemEntity(

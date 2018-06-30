@@ -2,6 +2,7 @@ package io.github.project_travel_mate.travel.mytrips;
 
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.util.Log;
@@ -23,13 +24,11 @@ import java.util.Objects;
 import io.github.project_travel_mate.R;
 import objects.Trip;
 
-import static utils.Constants.EXTRA_MESSAGE_TRIP_OBJECT;
-
 class MyTripsAdapter extends ArrayAdapter<Trip> {
-    private final Activity mContext;
+    private final Context mContext;
     private final List<Trip> mTrips;
 
-    MyTripsAdapter(Activity context,
+    MyTripsAdapter(Context context,
                    List<Trip> trips) {
         super(context, R.layout.trip_listitem, trips);
         this.mContext = context;
@@ -50,12 +49,9 @@ class MyTripsAdapter extends ArrayAdapter<Trip> {
             cityname.setText(mContext.getResources().getString(R.string.prompt_add_new_trip));
             date.setText("");
 
-            view.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Intent i = new Intent(mContext, AddNewTrip.class);
-                    mContext.startActivity(i);
-                }
+            view.setOnClickListener(v -> {
+                Intent i = AddNewTripActivity.getStartIntent(mContext);
+                mContext.startActivity(i);
             });
 
         } else {
@@ -73,13 +69,9 @@ class MyTripsAdapter extends ArrayAdapter<Trip> {
             final String timeString =
                     new SimpleDateFormat("dd-MMM", Locale.US).format(cal.getTime());
             date.setText(timeString);
-            view.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Intent intent = new Intent(mContext, MyTripInfo.class);
-                    intent.putExtra(EXTRA_MESSAGE_TRIP_OBJECT, mTrips.get(position));
-                    mContext.startActivity(intent);
-                }
+            view.setOnClickListener(v -> {
+                Intent intent = MyTripInfoActivity.getStartIntent(mContext, mTrips.get(position));
+                mContext.startActivity(intent);
             });
         }
         return view;

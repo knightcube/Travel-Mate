@@ -10,43 +10,45 @@ import java.util.List;
  */
 public class City implements Serializable {
 
+    private final List<String> mInterests = new ArrayList<>();
     private String mAvatar;
     private String mNickname;
     private String mDescription;
     private String mId;
     private String mLatitude;
     private String mLongitude;
-    private int mBackground;
-    private final List<String> mInterests = new ArrayList<>();
+    private int mFunFactsCount;
 
     /**
      * Instantiates city object
      *
-     * @param id         unique id for a city
-     * @param avatar     city image
-     * @param nickname   city name
-     * @param description   city description
-     * @param background Background color when card is opened
-     * @param lat        latitude of city
-     * @param lon        longitude of city
-     * @param interest   list of items when string is opened
+     * @param id          unique id for a city
+     * @param avatar      city image
+     * @param nickname    city name
+     * @param description city description
+     * @param lat         latitude of city
+     * @param lon         longitude of city
+     * @param funFactsCount count of fun facts for the city
+     * @param interest    list of items when string is opened
      */
     public City(String id, String avatar, String nickname, String description,
-                int background, String lat, String lon, String... interest) {
+                String lat, String lon,  int funFactsCount, String... interest) {
         this.mAvatar = avatar;
         this.mId = id;
         this.mLatitude = lat;
         this.mLongitude = lon;
         this.mNickname = nickname;
         this.mDescription = description;
-        this.mBackground = background;
+        this.mFunFactsCount = funFactsCount;
         mInterests.addAll(Arrays.asList(interest));
     }
 
-    public City( String mId, String mAvatar, String mNickname) {
+    public City(String mId, String mAvatar, String mNickname, int funFactsCount, String... interest) {
         this.mAvatar = mAvatar;
         this.mNickname = mNickname;
         this.mId = mId;
+        this.mFunFactsCount = funFactsCount;
+        mInterests.addAll(Arrays.asList(interest));
     }
 
     public String getAvatar() {
@@ -73,12 +75,23 @@ public class City implements Serializable {
         return mLongitude;
     }
 
-    public int getBackground() {
-        return mBackground;
-    }
-
     public List<String> getInterests() {
         return mInterests;
     }
 
+    public int getFunFactsCount() {
+        return mFunFactsCount;
+    }
+
+    public void setDescription(String mDescription) {
+        this.mDescription = mDescription;
+    }
+
+    public void setLatitude(String mLatitude) {
+        this.mLatitude = mLatitude;
+    }
+
+    public void setLongitude(String mLongitude) {
+        this.mLongitude = mLongitude;
+    }
 }

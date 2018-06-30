@@ -22,7 +22,6 @@ import java.util.Objects;
 
 import butterknife.ButterKnife;
 import butterknife.OnClick;
-import io.github.project_travel_mate.BuildConfig;
 import io.github.project_travel_mate.R;
 import objects.FunFact;
 
@@ -71,7 +70,7 @@ public class FunfactFragment extends Fragment {
 
         // TODO :: Use butterknife & viewholder
         FunFact fact = (FunFact) getArguments().getSerializable(EXTRA_MESSAGE_FUNFACT_OBJECT);
-        View view = inflater.inflate(R.layout.funfact_fragment, container, false);
+        View view = inflater.inflate(R.layout.fragment_funfact, container, false);
         if (fact != null) {
             ((TextView) view.findViewById(R.id.tv)).setText(fact.getText());
             ((TextView) view.findViewById(R.id.head)).setText(fact.getTitle());

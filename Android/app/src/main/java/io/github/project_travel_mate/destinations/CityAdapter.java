@@ -20,8 +20,9 @@ import java.util.List;
 import flipviewpager.adapter.BaseFlipAdapter;
 import flipviewpager.utils.FlipSettings;
 import io.github.project_travel_mate.R;
-import io.github.project_travel_mate.destinations.description.FinalCityInfo;
-import io.github.project_travel_mate.destinations.funfacts.FunFacts;
+import io.github.project_travel_mate.destinations.description.FinalCityInfoActivity;
+import io.github.project_travel_mate.destinations.description.TweetsActivity;
+import io.github.project_travel_mate.destinations.funfacts.FunFactsActivity;
 import objects.City;
 import views.FontTextView;
 
@@ -59,7 +60,7 @@ class CityAdapter extends BaseFlipAdapter<City> {
             holder.fv4 = (FontTextView) holder.infoPage.findViewById(R.id.interest_4);
 
             for (int id : mIdsInterest)
-                holder.interests.add((TextView) holder.infoPage.findViewById(id));
+                holder.interests.add(holder.infoPage.findViewById(id));
 
             convertView.setTag(holder);
         } else {
@@ -104,59 +105,84 @@ class CityAdapter extends BaseFlipAdapter<City> {
         Iterator<String> iInterests = city.getInterests().iterator();
         while (iViews.hasNext() && iInterests.hasNext())
             iViews.next().setText(iInterests.next());
-        holder.infoPage.setBackgroundColor(mContext.getResources().getColor(city.getBackground()));
+        holder.infoPage.setBackgroundColor(mContext.getResources().getColor(getRandomColor()));
         holder.nickName.setText(city.getNickname());
 
-        holder.nickName.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-            }
+        holder.nickName.setOnClickListener(v -> {
         });
 
-        holder.fv1.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(mContext, FinalCityInfo.class);
-                intent.putExtra(EXTRA_MESSAGE_CITY_OBJECT, city);
-                mContext.startActivity(intent);
-            }
+        holder.fv1.setOnClickListener(v -> {
+            Intent intent = FinalCityInfoActivity.getStartIntent(mContext, city);
+            mContext.startActivity(intent);
         });
 
-        holder.fv3.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(mContext, FunFacts.class);
-                intent.putExtra(EXTRA_MESSAGE_CITY_OBJECT, city);
-                mContext.startActivity(intent);
-            }
+        if (city.getFunFactsCount() < 1) {
+            holder.fv3.setVisibility(View.GONE);
+        } else {
+            holder.fv3.setVisibility(View.VISIBLE);
+        }
+
+        holder.fv3.setOnClickListener(v -> {
+            Intent intent = FunFactsActivity.getStartIntent(mContext, city);
+            mContext.startActivity(intent);
         });
 
-        holder.fv2.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://maps.google.com/?ie=UTF8&hq=&ll=" +
-                        city.getLatitude() + "," + city.getLongitude() +
-                        "&z=13")); // zoom level
-                mContext.startActivity(browserIntent);
-            }
+        holder.fv2.setOnClickListener(v -> {
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://maps.google.com/?ie=UTF8&hq=&ll=" +
+                    city.getLatitude() + "," + city.getLongitude() +
+                    "&z=13")); // zoom level
+            mContext.startActivity(browserIntent);
         });
 
-        holder.fv4.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.google.com"));
-                mContext.startActivity(browserIntent);
-            }
+        holder.fv4.setOnClickListener(v -> {
+            Intent intent = TweetsActivity.getStartIntent(mContext, city);
+            mContext.startActivity(intent);
         });
     }
 
     class CitiesHolder {
+        final List<TextView> interests = new ArrayList<>();
         ImageView leftAvatar;
         ImageView rightAvatar;
         View infoPage;
         TextView fv1, fv2, fv3, fv4;
         TextView left, right;
-        final List<TextView> interests = new ArrayList<>();
         TextView nickName;
+    }
+
+    private int getRandomColor() {
+        double random = Math.random();
+        int randomNum8 = (int) (random * 100) % 8;
+        int color;
+        switch (randomNum8) {
+            case 0:
+                color = R.color.sienna;
+                break;
+            case 1:
+                color = R.color.saffron;
+                break;
+            case 2:
+                color = R.color.green;
+                break;
+            case 3:
+                color = R.color.pink;
+                break;
+            case 4:
+                color = R.color.orange;
+                break;
+            case 5:
+                color = R.color.saffron;
+                break;
+            case 6:
+                color = R.color.purple;
+                break;
+            case 7:
+                color = R.color.blue;
+                break;
+            default:
+                color = R.color.blue;
+                break;
+        }
+        return color;
     }
 }

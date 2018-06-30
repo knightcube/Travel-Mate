@@ -34,10 +34,9 @@ import static utils.Constants.DESTINATION_CITY_LON;
 
 public class LocationService extends Service {
     private static final String BROADCAST_ACTION = "Hello World";
+    private final Location mPreviousBestLocation = null;
     private LocationManager mLocationManager;
     private MyLocationListener mListener;
-    private final Location mPreviousBestLocation = null;
-
     private Intent mIntent;
 
     public static Thread performOnBackgroundThread(final Runnable runnable) {
@@ -138,7 +137,7 @@ public class LocationService extends Service {
                                 .setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_VIBRATE);
                 int notificationId = 12345;
 
-                Intent targetIntent = new Intent(LocationService.this, MainActivity.class);
+                Intent targetIntent = MainActivity.getStartIntent(LocationService.this);
                 PendingIntent contentIntent = PendingIntent.getActivity(LocationService.this,
                         0,
                         targetIntent,
